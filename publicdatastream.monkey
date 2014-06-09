@@ -334,6 +334,12 @@ Class PublicDataStream Extends Stream
 		
 		Return
 	End
+	
+	Method Buffer:Void(Input:DataBuffer) Property
+		Self._Buffer = Input
+		
+		Return
+	End
 		
 	' Properties (Private):
 	Private
@@ -345,12 +351,6 @@ Class PublicDataStream Extends Stream
 		Return
 	End
 	#End
-	
-	Method Buffer:Void(Input:DataBuffer) Property
-		Self._Buffer = Input
-		
-		Return
-	End
 	
 	Public
 	

@@ -377,24 +377,26 @@ Class PublicDataStream Extends Stream
 End
 
 ' Functions (Public):
-Function ResizeBuffer:DataBuffer(B:DataBuffer, Size:Int=0, ShouldDiscard:Bool=True)
-	' Check for errors:
-	If (B = Null) Then Return Null
-	If (Not Size) Then Size = B.Length()*2
-	
-	' Local variable(s):
-	Local Output:DataBuffer = New DataBuffer(Size)
-	
-	' Copy the bytes from the old buffer to the new buffer.
-	B.CopyBytes(0, Output, 0, B.Length())
-	
-	' Check if we should discard the old buffer.
-	If (ShouldDiscard) Then
-		B.Discard(); B = Null
+Function ResizeBuffer:DataBuffer(Buffer:DataBuffer, Size:Int=0, DiscardOldBuffer:Bool=False, CopyData:Bool=True)
+	If (Not Size) Then
+		Size = Buffer.Length()*2
 	Endif
 	
-	' Return the output-buffer.
-	Return Output
+	' Allocate a new data-buffer.
+	Local B:= New DataBuffer(Size)
+	
+	If (CopyData) Then
+		' Copy the buffer's bytes over to 'B'.
+		Buffer.CopyBytes(0, B, 0, Min(Buffer.Length(), B.Length()))
+	Endif
+	
+	If (DiscardOldBuffer) Then
+		' Discard the old buffer.
+		Buffer.Discard()
+	Endif
+	
+	' Return the new buffer ('B').
+	Return B
 End
 
 ' Functions (Private):

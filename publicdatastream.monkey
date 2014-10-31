@@ -18,6 +18,9 @@ Strict
 
 Public
 
+' Preprocessor related:
+#PUBLIC_DATA_STREAM_ALLOW_CONVERSION = True
+
 ' Imports (Public):
 
 ' BRL:
@@ -31,31 +34,35 @@ Private
 
 ' BRL:
 Import brl.databuffer
-Import brl.datastream
+
+#If PUBLIC_DATA_STREAM_ALLOW_CONVERSION
+	Import brl.datastream
+#End
 
 Public
 
 ' Classes:
 Class PublicDataStream Extends Stream
 	' Constant variable(s):
+	Const NOLIMIT:Int = 0
 	
 	' Defaults:
 	Const Default_BigEndianStorage:Bool = False
 	
 	' Constructor(s) (Public):
-	Method New(ShouldResize:Bool, Path:String="", SizeLimit:Int=0, BigEndianStorage:Bool=Default_BigEndianStorage)
+	Method New(ShouldResize:Bool, Path:String="", SizeLimit:Int=NOLIMIT, BigEndianStorage:Bool=Default_BigEndianStorage)
 		Construct(ShouldResize, Path, SizeLimit, BigEndianStorage)
 	End
 	
-	Method New(BufferSize:Int, ShouldResize:Bool=False, Path:String="", SizeLimit:Int=0, BigEndianStorage:Bool=Default_BigEndianStorage)
+	Method New(BufferSize:Int, ShouldResize:Bool=False, Path:String="", SizeLimit:Int=NOLIMIT, BigEndianStorage:Bool=Default_BigEndianStorage)
 		Construct(New DataBuffer(BufferSize), 0, 0, ShouldResize, Path, SizeLimit, BigEndianStorage)
 	End
 	
-	Method New(Buffer:DataBuffer, Offset:Int=0, ShouldResize:Bool=False, Path:String="", SizeLimit:Int=0, BigEndianStorage:Bool=Default_BigEndianStorage)
+	Method New(Buffer:DataBuffer, Offset:Int=0, ShouldResize:Bool=False, Path:String="", SizeLimit:Int=NOLIMIT, BigEndianStorage:Bool=Default_BigEndianStorage)
 		Construct(Buffer, Offset, ShouldResize, Path, SizeLimit, BigEndianStorage)
 	End
 	
-	Method New(Buffer:DataBuffer, Offset:Int, Length:Int, ShouldResize:Bool=False, Path:String="", SizeLimit:Int=0, BigEndianStorage:Bool=Default_BigEndianStorage)
+	Method New(Buffer:DataBuffer, Offset:Int, Length:Int, ShouldResize:Bool=False, Path:String="", SizeLimit:Int=NOLIMIT, BigEndianStorage:Bool=Default_BigEndianStorage)
 		Construct(Buffer, Offset, Length, ShouldResize, Path, SizeLimit, BigEndianStorage)
 	End
 	
@@ -67,11 +74,12 @@ Class PublicDataStream Extends Stream
 		Construct(Null, 0, False, Path, BigEndianStorage)
 	End
 	
+	' This is here for the sake of inheriting classes:
 	Method Construct:PublicDataStream(O:Object, ShouldResize:Bool=True, BigEndianStorage:Bool=Default_BigEndianStorage)
 		Return Null
 	End
 	
-	Method Construct:PublicDataStream(ShouldResize:Bool=True, Path:String="", SizeLimit:Int=0, BigEndianStorage:Bool=Default_BigEndianStorage)
+	Method Construct:PublicDataStream(ShouldResize:Bool=True, Path:String="", SizeLimit:Int=NOLIMIT, BigEndianStorage:Bool=Default_BigEndianStorage)
 		' Local variable(s):
 		Local B:DataBuffer = Null
 		
@@ -84,11 +92,11 @@ Class PublicDataStream Extends Stream
 		Return Construct(B, 0, 0, ShouldResize, Path, SizeLimit, BigEndianStorage)
 	End
 	
-	Method Construct:PublicDataStream(Data:DataBuffer, Offset:Int, ShouldResize:Bool=False, Path:String="", SizeLimit:Int=0, BigEndianStorage:Bool=Default_BigEndianStorage)
+	Method Construct:PublicDataStream(Data:DataBuffer, Offset:Int, ShouldResize:Bool=False, Path:String="", SizeLimit:Int=NOLIMIT, BigEndianStorage:Bool=Default_BigEndianStorage)
 		Return Construct(Data, Offset, Data.Length, ShouldResize, Path, SizeLimit, BigEndianStorage)
 	End
 	
-	Method Construct:PublicDataStream(Data:DataBuffer, Offset:Int=0, Length:Int=0, ShouldResize:Bool=False, Path:String="", SizeLimit:Int=0, BigEndianStorage:Bool=Default_BigEndianStorage)
+	Method Construct:PublicDataStream(Data:DataBuffer, Offset:Int=0, Length:Int=0, ShouldResize:Bool=False, Path:String="", SizeLimit:Int=NOLIMIT, BigEndianStorage:Bool=Default_BigEndianStorage)
 		If (Self._Buffer = Null) Then
 			If (Data = Null And Path.Length() > 0) Then
 				Data = DataBuffer.Load(Path)
@@ -223,7 +231,7 @@ Class PublicDataStream Extends Stream
 		
 		If (Count+Position > Buffer.Length()) Then
 			If (ShouldResize) Then
-				If ((Buffer.Length()*2 < SizeLimit Or SizeLimit = 0)) Then
+				If ((Buffer.Length()*2 < SizeLimit Or SizeLimit = NOLIMIT)) Then
 					Buffer = ResizeBuffer(Buffer, Buffer.Length()*2)
 				Else
 					'WriteResponse = False
@@ -248,15 +256,17 @@ Class PublicDataStream Extends Stream
 		Return
 	End
 	
-	Method ToDataStream:DataStream(CloseThis:Bool=True)
-		Local DS:DataStream
-		
-		DS = New DataStream(Buffer, Position, Length)
-		
-		If (CloseThis) Then Close()
-		
-		Return DS
-	End
+	#If PUBLIC_DATA_STREAM_ALLOW_CONVERSION
+		Method ToDataStream:DataStream(CloseThis:Bool=True)
+			Local DS:DataStream
+			
+			DS = New DataStream(Buffer, Position, Length)
+			
+			If (CloseThis) Then Close()
+			
+			Return DS
+		End
+	#End
 	
 	Method Seek:Int(Input:Int=0)
 		Self._Position = Clamp(Input, 0, Self._Length-1)
@@ -377,25 +387,38 @@ Class PublicDataStream Extends Stream
 End
 
 ' Functions (Public):
-Function ResizeBuffer:DataBuffer(Buffer:DataBuffer, Size:Int=0, DiscardOldBuffer:Bool=False, CopyData:Bool=True)
-	If (Not Size) Then
+
+' Basically just a modified version of the 'util' module's implementation.
+Function ResizeBuffer:DataBuffer(Buffer:DataBuffer, Size:Int=0, CopyData:Bool=True, DiscardOldBuffer:Bool=False, OnlyWhenDifferentSizes:Bool=False)
+	Local BufferAvailable:Bool = (Buffer <> Null)
+	
+	If (BufferAvailable And OnlyWhenDifferentSizes) Then
+		If (Size <> 0 And Buffer.Length() = Size) Then
+			Return Buffer
+		Endif
+	Endif
+	
+	If (Size = 0) Then
 		Size = Buffer.Length()*2
 	Endif
 	
 	' Allocate a new data-buffer.
 	Local B:= New DataBuffer(Size)
 	
-	If (CopyData) Then
-		' Copy the buffer's bytes over to 'B'.
-		Buffer.CopyBytes(0, B, 0, Min(Buffer.Length(), B.Length()))
+	' Copy the buffer's bytes over to 'B'.
+	If (BufferAvailable) Then
+		If (CopyData) Then
+			' Copy the contents of 'Buffer' to the newly generated buffer-object.
+			Buffer.CopyBytes(0, B, 0, Buffer.Length())
+		Endif
+		
+		If (DiscardOldBuffer) Then
+			' Discard the old buffer.
+			Buffer.Discard()
+		Endif
 	Endif
 	
-	If (DiscardOldBuffer) Then
-		' Discard the old buffer.
-		Buffer.Discard()
-	Endif
-	
-	' Return the new buffer ('B').
+	' Return the newly generated buffer.
 	Return B
 End
 

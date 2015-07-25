@@ -191,7 +191,7 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 				Local NewSize:= (Data.Length * 2)
 				
 				If ((NewSize < SizeLimit Or SizeLimit = NOLIMIT)) Then
-					Data = ResizeBuffer(Data, NewSize, OwnsBuffer)
+					Data = ResizeBuffer(Data, NewSize, True, OwnsBuffer)
 				Else
 					'WriteResponse = False
 				Endif

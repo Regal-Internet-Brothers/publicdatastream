@@ -189,13 +189,7 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	Method WriteAll:Void(Buf:DataBuffer, Offset:Int, Count:Int)
 		If (Count+Position > DataLength) Then
 			If (ShouldResize) Then
-				Local NewSize:= Max(Int(Float(Data.Length) * ResizeScalar), Count)
-				
-				If ((SizeLimit = NOLIMIT Or NewSize < SizeLimit)) Then
-					Data = ResizeBuffer(Data, NewSize, True, OwnsBuffer)
-				Else
-					'Return
-				Endif
+				AutoResize(Count)
 			Else
 				'Return
 			Endif
@@ -250,6 +244,34 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 		S.Write(Data, Offset, Position)
 		
 		Return
+	End
+	
+	Method AutoResize:Bool(MinBytes:Int=0)
+		If (Not OwnsBuffer) Then
+			Return False
+		Endif
+		
+		Return Resize(Max(Int(Float(Data.Length) * ResizeScalar), MinBytes))
+	End
+	
+	Method Resize:Bool(NewSize:Int, Force:Bool=False)
+		If (Not OwnsBuffer) Then
+			Return False
+		Endif
+		
+		If (SizeLimit <> NOLIMIT) Then
+			If (NewSize > SizeLimit) Then
+				If (Force) Then
+					NewSize = Min(NewSize, SizeLimit)
+				Else
+					Return False
+				Endif
+			Endif
+		Endif
+		
+		Data = ResizeBuffer(Data, NewSize, True, True, True)
+		
+		Return (Data <> Null)
 	End
 	
 	' Call-backs:

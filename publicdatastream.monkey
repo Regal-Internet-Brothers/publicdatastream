@@ -254,6 +254,14 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 		Return Resize(Max(Int(Float(Data.Length) * ResizeScalar), MinBytes))
 	End
 	
+	Method SmartResize:Bool(MinBytes:Int)
+		If (MinBytes <= DataLength) Then
+			Return True
+		Endif
+		
+		Return Resize(MinBytes)
+	Endif
+	
 	Method Resize:Bool(NewSize:Int, Force:Bool=False)
 		If (Not OwnsBuffer) Then
 			Return False

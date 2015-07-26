@@ -30,15 +30,15 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	Const Default_BigEndianStorage:Bool = False
 	
 	' Constructor(s) (Public):
-	Method New(Size:Int, FixByteOrder:Bool=Default_BigEndianStorage, Resizable:Bool=True, SizeLimit:Int=NOLIMIT)
+	Method New(Size:Int, BigEndianStorage:Bool=Default_BigEndianStorage, Resizable:Bool=True, SizeLimit:Int=NOLIMIT)
 		GenerateBuffer(Size)
 		
-		Self.FixByteOrder = FixByteOrder
+		Self.BigEndianStorage = BigEndianStorage
 		Self.ShouldResize = Resizable
 		Self.SizeLimit = SizeLimit
 	End
 	
-	Method New(B:DataBuffer, Offset:Int=0, Copy:Bool=False, FixByteOrder:Bool=Default_BigEndianStorage, Resizable:Bool=True, SizeLimit:Int=NOLIMIT)
+	Method New(B:DataBuffer, Offset:Int=0, Copy:Bool=False, BigEndianStorage:Bool=Default_BigEndianStorage, Resizable:Bool=True, SizeLimit:Int=NOLIMIT)
 		If (Copy) Then
 			GenerateBuffer(B)
 			
@@ -49,19 +49,19 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 		
 		Self._Offset = Offset
 		
-		Self.FixByteOrder = FixByteOrder
+		Self.BigEndianStorage = BigEndianStorage
 		Self.ShouldResize = Resizable
 		Self.SizeLimit = SizeLimit
 	End
 	
-	Method New(Path:String, FixByteOrder:Bool=Default_BigEndianStorage, Async:Bool=False)
+	Method New(Path:String, BigEndianStorage:Bool=Default_BigEndianStorage, Async:Bool=False)
 		If (Not Async) Then
 			Self.Data = DataBuffer.Load(Path)
 		Else
 			DataBuffer.LoadAsync(Path, Self)
 		Endif
 		
-		Self.FixByteOrder = FixByteOrder
+		Self.BigEndianStorage = BigEndianStorage
 	End
 	
 	' Constructor(s) (Protected):
@@ -110,7 +110,7 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	
 	' Methods:
 	Method Seek:Int(Input:Int=0)
-		Self._Position = Clamp(Input, 0, (Length-1))
+		Self._Position = Clamp(Input, 0, DataLength)
 		
 		Return Self._Position
 	End
@@ -122,15 +122,15 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	End
 	
 	Method Eof:Int()
-		Return (Position >= Length)
+		Return (Position >= DataLength)
 	End
 	
 	Method WillOverReach:Bool(Bytes:Int)
-		Return (Position+Bytes > Length)
+		Return (Position+Bytes > DataLength)
 	End
 	
 	Method ReadShort:Int()
-		If (FixByteOrder) Then
+		If (BigEndianStorage) Then
 			Return NToHS(Super.ReadShort())
 		Endif
 		
@@ -138,7 +138,7 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	End
 	
 	Method ReadInt:Int()
-		If (FixByteOrder) Then
+		If (BigEndianStorage) Then
 			Return NToHL(Super.ReadInt())
 		Endif
 		
@@ -146,15 +146,15 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	End
 	
 	Method ReadFloat:Float()
-		If (FixByteOrder) Then
-			Return NToHF(Super.ReadFloat())
+		If (BigEndianStorage) Then
+			Return NToHF(Super.ReadInt())
 		Endif
 		
 		Return Super.ReadFloat()
 	End
 	
 	Method WriteShort:Void(Value:Int)
-		If (FixByteOrder) Then
+		If (BigEndianStorage) Then
 			Super.WriteShort(HToNS(Value))
 		Else
 			Super.WriteShort(Value)
@@ -164,7 +164,7 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	End
 	
 	Method WriteInt:Void(Value:Int)
-		If (FixByteOrder) Then
+		If (BigEndianStorage) Then
 			Super.WriteInt(HToNL(Value))
 		Else
 			Super.WriteInt(Value)
@@ -174,7 +174,7 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	End
 	
 	Method WriteFloat:Void(Value:Float)
-		If (FixByteOrder) Then
+		If (BigEndianStorage) Then
 			Super.WriteInt(HToNF(Value))
 		Else
 			Super.WriteFloat(Value)
@@ -184,38 +184,38 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	End
 	
 	Method WriteAll:Void(Buf:DataBuffer, Offset:Int, Count:Int)
-		Local WriteResponse:Bool = True
-		
-		If (Count+Position > Data.Length) Then
+		If (Count+Position > DataLength) Then
 			If (ShouldResize) Then
 				Local NewSize:= Max(Data.Length * 2, Count)
 				
 				If ((SizeLimit = NOLIMIT Or NewSize < SizeLimit)) Then
 					Data = ResizeBuffer(Data, NewSize, True, OwnsBuffer)
 				Else
-					'WriteResponse = False
+					'Return
 				Endif
 			Else
-				'WriteResponse = False
+				'Return
 			Endif
 		Endif
 		
 		' Call the super-class's implementation.
-		If (WriteResponse) Then
-			Super.WriteAll(Buf, Offset, Count)
-		Endif
+		Super.WriteAll(Buf, Offset, Count)
 		
 		Return
 	End
 	
 	Method Read:Int(Buf:DataBuffer, Offset:Int, Count:Int)
-		If (Position + Count > Length) Then
-			Count = Max(Length - Position, 0)
+		If (WillOverReach(Count)) Then
+			Count = Self.BytesLeft
 		Endif
 		
-		For Local Index:= 0 Until Count
-			Buf.PokeByte(Offset+Index, Self.Data.PeekByte(Offset+Position+Index))
-		Next
+		#Rem
+			For Local Index:= 0 Until Count
+				Buf.PokeByte(Offset+Index, Self.Data.PeekByte(Offset+Position+Index))
+			Next
+		#End
+		
+		Self.Data.CopyBytes(Self.DataOffset, Buf, Offset, Count)
 		
 		Self._Position += Count
 		
@@ -223,14 +223,20 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	End
 	
 	Method Write:Int(Buf:DataBuffer, Offset:Int, Count:Int)
-		If (Position + Count > Length) Then
+		If (WillOverReach(Count)) Then
 			'Count = Max(Length - Position, 0)
-			Count = 0
+			'Count = 0
+			
+			Return 0
 		Endif
 		
-		For Local Index:= 0 Until Count
-			Self.Data.PokeByte(Offset+Position+Index, Buf.PeekByte(Offset+Index))
-		Next
+		#Rem
+			For Local Index:= 0 Until Count
+				Self.Data.PokeByte(Offset+Position+Index, Buf.PeekByte(Offset+Index))
+			Next
+		#End
+		
+		Buf.CopyBytes(Offset, Self.Data, Self.DataOffset, Count)
 		
 		Self._Position += Count
 		
@@ -247,36 +253,66 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	End
 	
 	' Properties:
+	
+	' This is currently the same as 'Position'.
 	Method Length:Int() Property
-		Return (Data.Length - Offset)
+		Return Position
 	End
 	
+	' The internal offset/starting point in the 'Data' buffer.
 	Method Offset:Int() Property
 		Return Self._Offset
 	End
 	
+	' The number of bytes into the buffer this stream is.
 	Method Position:Int() Property
 		Return Self._Position
 	End
 	
-	Method BytesLeft:Int() Property
-		Return Max(Length - Position, 0)
+	' The overall length of the 'Data' buffer. (Taking 'Offset' into account)
+	Method DataLength:Int() Property
+		Return (Data.Length - Offset)
 	End
 	
+	' The real position in the 'Data' buffer. (After 'Offset')
+	Method DataOffset:Int() Property
+		Return (Offset+Position)
+	End
+	
+	' The number of bytes left in 'Data'.
+	Method BytesLeft:Int() Property
+		Return Max(DataLength - DataOffset, 0)
+	End
+	
+	' This may be used for asynchronous buffer-loading.
 	Method DataReady:Bool() Property
 		Return (Data <> Null)
 	End
 	
 	' Fields:
+	
+	' The internal I/O buffer.
 	Field Data:DataBuffer
 	
+	' Please use the corresponding properties when possible:
+	
+	' This acts as an internal offset inside the 'Data' buffer.
 	Field _Offset:Int
+	
+	' The (Local) position of the stream.
 	Field _Position:Int
 	
+	' The internal buffer's size-limit. (Used when resizing)
 	Field SizeLimit:Int = NOLIMIT
 	
 	' Booleans / Flags:
+	
+	' This may be used to toggle resizing the internal buffer.
 	Field ShouldResize:Bool
-	Field FixByteOrder:Bool
+	
+	' This specifies if big-endian byte-order should be used.
+	Field BigEndianStorage:Bool
+	
+	' This specifies if this stream owns the internal buffer.
 	Field OwnsBuffer:Bool
 End

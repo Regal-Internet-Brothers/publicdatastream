@@ -246,6 +246,12 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 		Return Count
 	End
 	
+	Method TransferTo:Void(S:Stream)
+		S.Write(Data, Offset, Position)
+		
+		Return
+	End
+	
 	' Call-backs:
 	Method OnLoadDataComplete:Void(Data:DataBuffer, Path:String)
 		If (Self.Data = Null) Then

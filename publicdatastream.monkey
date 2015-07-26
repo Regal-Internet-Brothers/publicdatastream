@@ -27,6 +27,9 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	Const NOLIMIT:Int = 0
 	
 	' Defaults:
+	Const Default_ResizeScalar:Float = 1.5 ' 2.0
+	
+	' Booleans / Flags:
 	Const Default_BigEndianStorage:Bool = False
 	
 	' Constructor(s) (Public):
@@ -186,7 +189,7 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	Method WriteAll:Void(Buf:DataBuffer, Offset:Int, Count:Int)
 		If (Count+Position > DataLength) Then
 			If (ShouldResize) Then
-				Local NewSize:= Max(Data.Length * 2, Count)
+				Local NewSize:= Max(Int(Float(Data.Length) * ResizeScalar), Count)
 				
 				If ((SizeLimit = NOLIMIT Or NewSize < SizeLimit)) Then
 					Data = ResizeBuffer(Data, NewSize, True, OwnsBuffer)
@@ -304,6 +307,10 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	
 	' The internal buffer's size-limit. (Used when resizing)
 	Field SizeLimit:Int = NOLIMIT
+	
+	' A floating-point scalar used when a resize-operation occurs.
+	' Numbers will be rounded as the hardware sees fit. (Usually rounds down)
+	Field ResizeScalar:Float = Default_ResizeScalar
 	
 	' Booleans / Flags:
 	

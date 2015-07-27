@@ -241,7 +241,7 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	End
 	
 	Method TransferTo:Void(S:Stream)
-		S.Write(Data, Offset, Position)
+		S.WriteAll(Data, Offset, Position)
 		
 		Return
 	End

@@ -260,7 +260,7 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 		Endif
 		
 		Return Resize(MinBytes)
-	Endif
+	End
 	
 	Method Resize:Bool(NewSize:Int, Force:Bool=False)
 		If (Not OwnsBuffer) Then

@@ -240,8 +240,16 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 		Return Count
 	End
 	
-	Method TransferTo:Void(S:Stream)
-		S.WriteAll(Data, Offset, Position)
+	Method TransferPart:Void(S:Stream, Bytes:Int, Offset:Int=0)
+		Local ReadOffset:= (Self.Offset+Offset)
+		
+		S.WriteAll(Data, ReadOffset, Bytes)
+		
+		Return
+	End
+	
+	Method TransferTo:Void(S:Stream, Offset:Int=0)
+		TransferPart(S, (Position-ReadOffset), Offset)
 		
 		Return
 	End

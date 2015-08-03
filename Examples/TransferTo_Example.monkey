@@ -16,7 +16,7 @@ Function Main:Int()
 	
 	' Local variable(s):
 	Local StartTime:= Millisecs()
-		
+	
 	For Local Test:= 1 To 8192
 		' Local variable(s):
 		Local S:= New PublicDataStream(Numbers*4) ' SizeOf_Integer

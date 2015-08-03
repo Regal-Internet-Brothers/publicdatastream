@@ -233,7 +233,7 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	
 	' This transfers a raw segment of the internal buffer into 'S'. (Use at your own risk)
 	Method TransferSegment:Void(S:Stream, Bytes:Int, Offset:Int)
-		S.Write(Data, Offset, Bytes)
+		S.WriteAll(Data, Offset, Bytes)
 		
 		Return
 	End

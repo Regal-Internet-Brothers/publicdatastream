@@ -121,6 +121,7 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	
 	Method Reset:Void()
 		Seek()
+		ResetLength()
 		
 		Return
 	End
@@ -203,9 +204,9 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	End
 	
 	Method Write:Int(Buf:DataBuffer, Offset:Int, Count:Int)
-		Local NewLength:= (Count+Position)
+		Local NewPosition:= (Count+Position)
 		
-		If (NewLength > DataLength) Then
+		If (NewPosition > DataLength) Then
 			If (ShouldResize) Then
 				AutoResize(Count)
 			Else
@@ -221,8 +222,9 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 		
 		Buf.CopyBytes(Offset, Self.Data, Self.DataOffset, Count)
 		
-		Self._Position = NewLength
-		Self._Length = Max(NewLength, Self._Length)
+		Self._Position = NewPosition
+		
+		SetLength(NewPosition)
 		
 		Return Count
 	End
@@ -236,9 +238,17 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	
 	' This may be used to transfer the internal data of this stream to another.
 	Method TransferTo:Void(S:Stream, Offset:Int=0)
+		#Rem
 		Local ReadOffset:= (Self.Offset+Offset)
 		
+		DebugStop()
+		
 		TransferSegment(S, Length, ReadOffset)
+		#End
+		
+		Local ReadOffset:= (Self.Offset+Offset)
+		
+		TransferSegment(S, (Position-ReadOffset), ReadOffset)
 		
 		Return
 	End
@@ -297,6 +307,16 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 		Data = ResizeBuffer(Data, NewSize, True, True, True)
 		
 		Return (Data <> Null)
+	End
+	
+	Method SetLength:Void(Value:Int)
+		Self._Length = Min(Max(Value, Self._Length), DataLength)
+		
+		Return
+	End
+	
+	Method ResetLength:Void()
+		Self._Length = 0
 	End
 	
 	' Call-backs:

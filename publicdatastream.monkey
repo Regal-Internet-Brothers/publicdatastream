@@ -125,10 +125,6 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 		Return
 	End
 	
-	Method Eof:Int()
-		Return (Position >= Length)
-	End
-	
 	' This states if the number of bytes specified may be read safely.
 	Method WillOverReach:Bool(Bytes:Int)
 		Return (Position+Bytes > Length)
@@ -314,6 +310,9 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	End
 	
 	' Properties:
+	Method Eof:Int() Property
+		Return (Position >= Length)
+	End
 	
 	' The furthest this stream has written.
 	Method Length:Int() Property

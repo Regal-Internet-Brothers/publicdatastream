@@ -238,17 +238,9 @@ Class PublicDataStream Extends Stream Implements IOnLoadDataComplete
 	
 	' This may be used to transfer the internal data of this stream to another.
 	Method TransferTo:Void(S:Stream, Offset:Int=0)
-		#Rem
 		Local ReadOffset:= (Self.Offset+Offset)
-		
-		DebugStop()
 		
 		TransferSegment(S, Length, ReadOffset)
-		#End
-		
-		Local ReadOffset:= (Self.Offset+Offset)
-		
-		TransferSegment(S, (Position-ReadOffset), ReadOffset)
 		
 		Return
 	End
